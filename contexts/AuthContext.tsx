@@ -1,5 +1,12 @@
-import { createContext, ReactNode } from "react";
+import { createContext, ReactNode, useState } from "react";
+import Router from "next/router"
 import { api } from "../services/api";
+
+type User = {
+  email: string;
+  permissions: string[];
+  roles: string[];
+};
 
 type SignInCredentials = {
   email: string;
@@ -8,6 +15,7 @@ type SignInCredentials = {
 
 type AuthContextData = {
   signIn(credentials: SignInCredentials): Promise<void>;
+  user: User;
   isAuthenticated: boolean;
 };
 
@@ -18,7 +26,8 @@ type AuthProviderProps = {
 export const AuthContext = createContext({} as AuthContextData);
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const isAuthenticated = false;
+  const [user, setUser] = useState<User>();
+  const isAuthenticated = !!user;
 
   async function signIn({ email, password }: SignInCredentials) {
     try {
@@ -26,14 +35,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
         email,
         password,
       });
-      console.log(response.data);
-    }catch (err) {
-      console.log(err)
+
+      const {token, refreshToken, permissions, roles} = response.data
+      
+      //pode utilizar: sessionStorage => não fica disponivel em outras sessoes, fecha navegador já era.
+      //pode utilizar: localStorage => dura, fica disponivel. pode fechar app, sair do navegador e reiniciar o computador que ele mantém. Como está com Next, no lado do servidor não tem acesso ao localStorage (só existe no browser).
+      //pode utilizar: cookies => estrutura de armazenamento mais antiga do browser. pode ser acessado tanto pelo lado do browser como pelo lado do servidor (será utilizada essa alternativa nesse projeto.)
+      
+      setUser({
+        email,
+        permissions,
+        roles,
+      })
+
+      Router.push("/dashboard")
+
+    } catch (err) {
+      console.log(err);
     }
   }
 
   return (
-    <AuthContext.Provider value={{ signIn, isAuthenticated }}>
+    <AuthContext.Provider value={{ signIn, isAuthenticated, user }}>
       {children}
     </AuthContext.Provider>
   );
